@@ -5,6 +5,10 @@
         console.log(this);
     };
 
+    Object.prototype.keys = function() {
+        return Object.keys(this);
+    };
+
     Function.prototype.setName = function(newName) {
         Object.defineProperty(this, "name", {value: newName});
     };
@@ -44,53 +48,63 @@
 
     const makeRgbColor = (function() {
         const colorMapping = {
+            gray: -1,
             red: 0,
             green: 1,
             blue: 2,
         };
-        return function(color) {
-            const rgbArgs = Array(3);
-            const rawColorFunction = (function() {
-                if (color in colorMapping) {
-                    const index = colorMapping[color];
-                    return function(val) {
-                        rgbArgs.fill(0);
-                        rgbArgs[index] = Math.floor(val);
-                        return rgb.apply(null, rgbArgs);
-                    };
-                } else if (color === "gray") {
-                    return function(val) {
-                        rgbArgs.fill(Math.floor(val));
-                        return rgb.apply(null, rgbArgs);
+        return {
+            mapping: colorMapping,
+            func: function(color) {
+                const rgbArgs = Array(3);
+                const rawColorFunction = (function() {
+                    if (color in colorMapping) {
+                        const index = colorMapping[color];
+                        if (index === -1) {
+                            // gray
+                            return function(val) {
+                                rgbArgs.fill(Math.floor(val));
+                                return rgb.apply(null, rgbArgs);
+                            }
+                        }
+                        return function(val) {
+                            rgbArgs.fill(0);
+                            rgbArgs[index] = Math.floor(val);
+                            return rgb.apply(null, rgbArgs);
+                        };
+                    } else {
+                        return null;
                     }
-                } else {
-                    return null;
-                }
-            })();
-            return wrapColorFunction(rawColorFunction, color, val => Math.floor(256 * (1 - val)));
+                })();
+                return wrapColorFunction(rawColorFunction, color, val => Math.floor(256 * (1 - val)));
+            },
         };
     })();
 
-    // TODO not finished yet, use rgb colors instead
     const makeRgbaColor = (function() {
         const colorMapping = {
             gray: [0, 0, 0],
             red: [255, 0, 0],
             green: [0, 255, 0],
             blue: [0, 0, 255],
+            yellow: [255, 255, 0],
+            purple: [255, 0, 255],
+            cyan: [0, 255, 255],
         };
-        colorMapping.print();
-        return function(color) {
-            return wrapColorFunction(rgba.bind(null, ...colorMapping[color]), color, val => val);
+        return {
+            mapping: colorMapping,
+            func: function(color) {
+                return wrapColorFunction(rgba.bind(null, ...colorMapping[color]), color, val => val);
+            },
         }
     })();
 
     const makeColors = (function() {
-        const colorArray = ["gray", "red", "green", "blue"];
         return function(colorMaker) {
+            const colorArray = colorMaker.mapping.keys();
             return colorArray
                 .reduce((obj, color) => {
-                        obj[color] = colorMaker(color);
+                        obj[color] = colorMaker.func(color);
                         return obj;
                     },
                     {
@@ -184,7 +198,6 @@
     const box = Rectangle.ofSize(boxDiv.offsetWidth, boxDiv.offsetHeight);
 
     const findACowOnce = function(boxDiv, box, target, closeEnoughDistance, color, newGame) {
-        color(.1).print();
         const maxDistanceSquared = box.maxDistanceSquaredTo(target);
         const rgbScale = 1 / maxDistanceSquared;
         const closeEnoughDistanceSquared = closeEnoughDistance * closeEnoughDistance;
@@ -205,11 +218,7 @@
                 return;
             }
             // + 1 for small border so NaN/Infinity is not created
-            const c = color(rgbScale * (d2 + 1)).toString();
-            c.print();
-            this.style.backgroundColor = c;//color(rgbScale * (d2 + 1));
-            this.style.backgroundColor.print();
-            c.print();
+            this.style.backgroundColor = color(rgbScale * (d2 + 1));
         };
 
         boxDiv.addEventListener("mousemove", findIt);
@@ -220,4 +229,6 @@
             [rgbColors, rgbaColors].random().random(), startGame);
     })();
 
-})(10);
+})(15);
+
+rgbaColors.print();
