@@ -22,12 +22,24 @@
     };
 
     const rgba = window.rgba = function(r, g, b, a) {
-        return "rgba(" + r + ", " + g + ", " + g + ", " + a + ")";
+        return "rgba(" + r + ", " + g + ", " + b + ", " + a + ")";
     };
 
     const gray = function(val) {
         val = Math.floor(val);
         return rgb(val, val, val);
+    };
+
+    const wrapColorFunction = function(rawColorFunction, color, postProcessor) {
+        const gradient = function(val) {
+            return Math.pow(val, 0.3);
+        };
+        const colorFunction = function(val) {
+            val.print();
+            return rawColorFunction(postProcessor(gradient(val)));
+        };
+        colorFunction.setName(color);
+        return colorFunction;
     };
 
     const makeRgbColor = (function() {
@@ -55,27 +67,21 @@
                     return null;
                 }
             })();
-            const gradient = function(val) {
-                return 1 - Math.pow(val, 0.3);
-            };
-            const colorFunction = function(val) {
-                val.print();
-                return rawColorFunction(Math.floor(256 * gradient(val)));
-            };
-            colorFunction.setName(color);
-            return colorFunction;
+            return wrapColorFunction(rawColorFunction, color, val => Math.floor(256 * (1 - val)));
         };
     })();
 
+    // TODO not finished yet, use rgb colors instead
     const makeRgbaColor = (function() {
         const colorMapping = {
-            gray: [255, 255, 255],
+            gray: [0, 0, 0],
             red: [255, 0, 0],
             green: [0, 255, 0],
             blue: [0, 0, 255],
         };
+        colorMapping.print();
         return function(color) {
-            return rgba.bind(null, ...colorMapping[color]);
+            return wrapColorFunction(rgba.bind(null, ...colorMapping[color]), color, val => val);
         }
     })();
 
@@ -178,6 +184,7 @@
     const box = Rectangle.ofSize(boxDiv.offsetWidth, boxDiv.offsetHeight);
 
     const findACowOnce = function(boxDiv, box, target, closeEnoughDistance, color, newGame) {
+        color(.1).print();
         const maxDistanceSquared = box.maxDistanceSquaredTo(target);
         const rgbScale = 1 / maxDistanceSquared;
         const closeEnoughDistanceSquared = closeEnoughDistance * closeEnoughDistance;
@@ -198,14 +205,19 @@
                 return;
             }
             // + 1 for small border so NaN/Infinity is not created
-            this.style.backgroundColor = color(rgbScale * (d2 + 1));
+            const c = color(rgbScale * (d2 + 1)).toString();
+            c.print();
+            this.style.backgroundColor = c;//color(rgbScale * (d2 + 1));
+            this.style.backgroundColor.print();
+            c.print();
         };
 
         boxDiv.addEventListener("mousemove", findIt);
     };
 
     (function startGame() {
-        findACowOnce(boxDiv, box, box.randomInnerPoint(), closeEnoughDistance, rgbColors.random(), startGame);
+        findACowOnce(boxDiv, box, box.randomInnerPoint(), closeEnoughDistance,
+            [rgbColors, rgbaColors].random().random(), startGame);
     })();
 
 })(10);
